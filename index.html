@@ -1,0 +1,756 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ระบบค้นหาอะไหล่</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f1f5f9;
+    margin: 0;
+    color: #1e293b;
+}
+
+header {
+    background: #12345a;
+    color: white;
+    text-align: center;
+    padding: 25px;
+}
+
+header h1 {
+    margin: 0 0 8px;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 25px auto;
+    padding: 15px;
+}
+
+.panel {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 3px 12px #00000010;
+}
+
+.search {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #1769aa;
+    border-radius: 8px;
+    font-size: 17px;
+}
+
+.parts-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px;
+}
+
+.part-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 3px 12px #00000010;
+}
+
+.part-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: contain;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.code {
+    color: #1769aa;
+    font-weight: bold;
+}
+
+#resultCount {
+    color: #1769aa;
+    font-weight: bold;
+}
+
+.no-result {
+    text-align: center;
+    color: #dc2626;
+    padding: 30px;
+    grid-column: 1 / -1;
+}
+
+.clear-btn {
+    margin-top: 12px;
+    background: #64748b;
+}
+
+button {
+    background: #1769aa;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 15px;
+}
+
+button:hover {
+    background: #0c477b;
+}
+/* ชื่ออะไหล่คลิกได้ */
+.part-card h3 {
+    cursor: pointer;
+    color: #1769aa;
+    transition: 0.2s;
+}
+
+.part-card h3:hover {
+    color: #0c477b;
+    text-decoration: underline;
+}
+
+/* หน้ารายละเอียดอะไหล่ */
+.detail-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.detail-content {
+    background: white;
+    width: 100%;
+    max-width: 500px;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+    position: relative;
+}
+
+.detail-content img {
+    width: 100%;
+    height: 300px;
+    object-fit: contain;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.detail-content h2 {
+    color: #12345a;
+}
+
+.detail-code {
+    font-size: 18px;
+    color: #1769aa;
+    font-weight: bold;
+}
+
+.close-detail {
+    position: absolute;
+    top: 10px;
+    right: 18px;
+    font-size: 30px;
+    cursor: pointer;
+    color: #64748b;
+}
+</style>
+</head>
+
+<body>
+<!-- หน้ารายละเอียดอะไหล่ -->
+<div id="detailModal" class="detail-modal"
+     onclick="closeDetail()">
+
+    <div class="detail-content"
+         onclick="event.stopPropagation()">
+
+        <span class="close-detail"
+              onclick="closeDetail()">&times;</span>
+
+        <h2>รายละเอียดอะไหล่</h2>
+
+        <img id="detailImage" src="" alt="รูปอะไหล่">
+
+        <h2 id="detailName"></h2>
+
+        <p>
+            รหัสอะไหล่:
+            <span id="detailCode" class="detail-code"></span>
+        </p>
+
+        <button onclick="closeDetail()">
+            ปิดหน้ารายละเอียด
+        </button>
+
+    </div>
+</div>
+<header>
+    <h1>ค้นหาอะไหล่พลวัชร์ เครื่องยนต์</h1>
+    <p>SPARE PARTS POLAWAT ENGINE CO.,LTD</p>
+</header>
+
+<div class="container">
+
+    <!-- ช่องค้นหา -->
+    <section class="panel">
+
+        <h2>🔍 ค้นหาอะไหล่</h2>
+
+        <input
+            type="text"
+            id="searchInput"
+            class="search"
+            placeholder="ค้นหาด้วยชื่ออะไหล่ หรือ รหัสอะไหล่..."
+            oninput="searchParts()"
+        >
+
+        <p id="resultCount"></p>
+
+        <button class="clear-btn" onclick="clearSearch()">
+            ล้างข้อมูลค้นหา
+        </button>
+
+    </section>
+
+    <!-- รายการอะไหล่ -->
+    <section class="panel">
+
+        <h2>📦 รายการอะไหล่ทั้งหมด</h2>
+
+        <div id="partsList" class="parts-grid"></div>
+
+    </section>
+
+</div>
+
+<script>
+// เปิดหน้ารายละเอียดอะไหล่
+function openDetail(part) {
+
+    document.getElementById("detailImage").src = part.image;
+
+    document.getElementById("detailName").textContent =
+        part.name;
+
+    document.getElementById("detailCode").textContent =
+        part.code;
+
+    document.getElementById("detailModal").style.display =
+        "flex";
+}
+
+// ปิดหน้ารายละเอียด
+function closeDetail() {
+
+    document.getElementById("detailModal").style.display =
+        "none";
+
+}
+
+// กด ESC เพื่อปิด
+document.addEventListener("keydown", function(event) {
+
+    if (event.key === "Escape") {
+        closeDetail();
+    }
+
+});
+// ข้อมูลอะไหล่
+let parts = [
+
+    { 
+        code: "MNH-02A",
+        name: "สายครัช 150CM หัวก้ามปู-ห่วง",
+        image: "C:/Users/admin/Desktop/โปรเจค2/imagee/1.png"
+    },
+
+    {
+        code: "MNG-21A",
+        name: "LOCK สายตึงสานพาน B1",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/2.png"
+    },
+
+    {
+        code: "MNG-19A",
+        name: "LOCK สายโช๊ค",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/3.png"
+    },
+
+    {
+        code: "MNG-20A",
+        name: "LOCK BATTERY",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/4.png"
+    },
+
+    {
+        code: "MNH-04A",
+        name: "เบรอมือ+สปริง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/5.png"
+    },
+
+    {
+        code: "MNC-06B",
+        name: "ลิงค์หลัง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/6.png"
+    },
+
+    {
+        code: "MNG-15A",
+        name: "LOCK แก้ว",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/7.png"
+    },
+
+    {
+        code: "MNG-14A",
+        name: "บูทรองใต้เบาะ",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/8.png"
+    },
+
+    {
+        code: "MNM-01A",
+        name: "เกจวัดชั่วโมง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/9.png"
+    },
+
+    {
+        code: "MNC-15B",
+        name: "LOCK NUT ใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/10.png"
+    },
+
+    {
+        code: "MNL-03B",
+        name: "แขนลิ้งค์ขวา R",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/11.png"
+    },
+
+    {
+        code: "MNL-02B",
+        name: "แขนลิ้งค์ซ้าย L",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/12.png"
+    },
+
+    {
+        code: "MNG-18A",
+        name: "ลูกรอกดึงโซ่+บูชในลูกRoller+ลูกปืน6001-2RS",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/13.png"
+    },
+
+    {
+        code: "MN5-001",
+        name: "แร็คพวงมาลัย",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/14.png"
+    },
+
+    {
+        code: "MNF-09A",
+        name: "แป้นเหยียบฝั่งขวา",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/15.png"
+    },
+
+    {
+        code: "MNF-10A",
+        name: "แป้นเหยียบฝั่งซ้าย",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/16.png"
+    },
+
+    {
+        code: "MNG-08A",
+        name: "กันตกสายพาน-1",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/17.png"
+    },
+
+    {
+        code: "MNG-09B",
+        name: "กันตกสายพาน-2",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/18.png"
+    },
+
+    {
+        code: "MNG-10A",
+        name: "กันตกสายพาน-3",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/19.png"
+    },
+
+    {
+        code: "MNG-13B",
+        name: "แขนตึงสายพาน",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/20.png"
+    },
+
+    {
+        code: "MNC-02C",
+        name: "เพลาส่งกำลังใบตัด-2",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/21.png"
+    },
+
+    {
+        code: "MNF-01A",
+        name: "แกนยึดเพลาหน้า",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/22.png"
+    },
+
+    {
+        code: "MNP-01C",
+        name: "ชุดรอกใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/23.png"
+    },
+
+    {
+        code: "MNG-01C",
+        name: "เพลาส่งกำลังขับ",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/24.png"
+    },
+
+    {
+        code: "MNG-05A",
+        name: "LOCK Position L ขาล็อกตำแหน่งเกียร์ซ้าย",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/25.png"
+    },
+
+    {
+        code: "MNG-06A",
+        name: "LOCK Position R ขาล็อกตำแหน่งเกียร์ขวา",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/26.png"
+    },
+
+    {
+        code: "MNG-07A",
+        name: "LOCK Position T ขาล็อกตำแหน่งเกียร์กลาง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/27.png"
+    },
+
+    {
+        code: "MNA-03A",
+        name: "ลิ่ม 6x6 25mm",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/28.png"
+    },
+
+    {
+        code: "MNC-10A",
+        name: "เฟืองขับเพลาหลัง สปายเล็ก",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/29.png"
+    },
+
+    {
+        code: "MNG-22A",
+        name: "บู๊ทแร็คพวงมาลัย",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/30.png"
+    },
+
+    {
+        code: "MNA-02A",
+        name: "ที่วางแก้ว",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/31.png"
+    },
+
+    {
+        code: "MNG-02A",
+        name: "สายพานB34",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/32.png"
+    },
+
+    {
+        code: "MNG-04A",
+        name: "สายพานB30",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/33.png"
+    },
+
+    {
+        code: "MNC-05C",
+        name: "ลิ้งค์ยกใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/34.png"
+    },
+
+    {
+        code: "MNG-12B",
+        name: "กันโซ่",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/35.png"
+    },
+
+    {
+        code: "MNG-11A",
+        name: "แผ่นใต้เบาะ",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/36.png"
+    },
+
+    {
+        code: "MNC-01A",
+        name: "แกนใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/37.png"
+    },
+
+    {
+        code: "MNL-01A",
+        name: "เพลาระดับใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/38.png"
+    },
+
+    {
+        code: "MNR-001",
+        name: "เพลาหลัง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/39.png"
+    },
+
+    {
+        code: "MNW-001",
+        name: "ชุดสายเกียร์",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/40.png"
+    },
+
+    {
+        code: "MNB-01B",
+        name: "กันชนหน้า",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/41.png"
+    },
+
+    {
+        code: "MNB-02A",
+        name: "Cover เครื่อง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/42.png"
+    },
+
+    {
+        code: "MNC-03A",
+        name: "อะแดปเตอร์คานใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/43.png"
+    },
+
+    {
+        code: "MNC-08B",
+        name: "ชุดจานใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/44.png"
+    },
+
+    {
+        code: "MNF-02A",
+        name: "เพลาหน้าขับ 2 2090+ลดขนาดคุณวินัย",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/45.png"
+    },
+
+    {
+        code: "MNF-03A",
+        name: "โครงรถ",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/46.png"
+    },
+
+    {
+        code: "MNS-01A",
+        name: "Cover พวงมาลัยซ้าย-ขวา",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/47.png"
+    },
+
+    {
+        code: "MNB-05A",
+        name: "กันชนหลัง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/48.png"
+    },
+
+    {
+        code: "MNB-04A",
+        name: "กระจังหน้า",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/49.png"
+    },
+
+    {
+        code: "MNC-13A",
+        name: "Cover RH จานในตัด (ขวา)",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/50.png"
+    },
+
+    {
+        code: "MNC-14A",
+        name: "Cover LH จานในตัด (ซ้าย)",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/51.png"
+    },
+
+    {
+        code: "MNP-05A",
+        name: "มู่เลย์ 100-4B ขนาด025.4 + ลิ่ม6mm 4 นิ้ว",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/52.png"
+    },
+
+    {
+        code: "MNP-06A",
+        name: "มู่เลย์ 125-2B ขนาด025.4 + ลิ่ม8mm 5 นิ้ว",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/53.png"
+    },
+
+    {
+        code: "MNP-07A",
+        name: "มู่เลย์ 150-2B ขนาด025.4 + ลิ่ม8mm 6 นิ้ว",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/54.png"
+    },
+
+    {
+        code: "MNP-03A",
+        name: "มู่เลย์ใบตัด 6 นิ้ว 2 ร่อง 25.4mm",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/60.png"
+    },
+
+    {
+        code: "MNP-04A",
+        name: "มู่เลย์ 3 นิ้ว นิ้วลิ่ม 1/4",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/61.png"
+    },
+
+    {
+        code: "MNF-06A",
+        name: "Cover หน้า",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/55.png"
+    },
+
+    {
+        code: "MNF-07A",
+        name: "Cover ซ้าย",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/56.png"
+    },
+
+    {
+        code: "MNF-08A",
+        name: "Cover ขวา",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/57.png"
+    },
+
+    {
+        code: "MNC-03B",
+        name: "อะแดปเตอร์คานใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/62.png"
+    },
+
+    {
+        code: "MNG-016",
+        name: "อะแดปเตอร์เพลายอยเกียร์ใบตัด",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/58.png"
+    },
+
+    {
+        code: "MNG-015",
+        name: "เกียร์กลับทิศทาง",
+        image: "C:/Users/admin/Desktop/รูปโปรเจค/imagee/59.png"
+    },
+
+    
+];
+
+// แสดงรายการอะไหล่
+function displayParts(data) {
+
+    const list = document.getElementById("partsList");
+
+    document.getElementById("resultCount").textContent =
+        "พบอะไหล่ " + data.length + " รายการ";
+
+    list.innerHTML = "";
+
+    // กรณีไม่พบข้อมูล
+    if (data.length === 0) {
+
+        list.innerHTML = `
+            <div class="no-result">
+                <h3>ไม่พบข้อมูลอะไหล่</h3>
+                <p>กรุณาตรวจสอบชื่อหรือรหัสอะไหล่อีกครั้ง</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    // แสดงการ์ดอะไหล่
+    data.forEach(part => {
+
+        const card = document.createElement("div");
+
+        card.className = "part-card";
+
+        const img = document.createElement("img");
+        img.src = part.image;
+        img.alt = part.name;
+        img.onerror = function() {
+            this.src = "https://placehold.co/400x250?text=No+Image";
+        };
+
+       const name = document.createElement("h3");
+       name.textContent = part.name;
+       // คลิกชื่อเพื่อเปิดหน้ารายละเอียด
+       name.onclick = function() {
+       openDetail(part);
+};
+
+        const code = document.createElement("p");
+        code.innerHTML = "รหัสอะไหล่: ";
+
+        const codeText = document.createElement("span");
+        codeText.className = "code";
+        codeText.textContent = part.code;
+
+        code.appendChild(codeText);
+
+        card.appendChild(img);
+        card.appendChild(name);
+        card.appendChild(code);
+
+        list.appendChild(card);
+
+    });
+
+}
+
+// ฟังก์ชันค้นหาอะไหล่
+function searchParts() {
+
+    const keyword = document
+        .getElementById("searchInput")
+        .value
+        .trim()
+        .toLowerCase();
+
+    // ค้นหาจากชื่อและรหัส
+    const filteredParts = parts.filter(part => {
+
+        const name = part.name.toLowerCase();
+        const code = part.code.toLowerCase();
+
+        return name.includes(keyword) ||
+               code.includes(keyword);
+
+    });
+
+    // แสดงผลการค้นหา
+    displayParts(filteredParts);
+
+}
+
+// ล้างช่องค้นหา
+function clearSearch() {
+
+    document.getElementById("searchInput").value = "";
+
+    displayParts(parts);
+
+}
+
+// เริ่มต้นระบบ
+displayParts(parts);
+
+</script>
+
+</body>
+</html>
